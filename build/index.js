@@ -3,15 +3,26 @@ const CAMERA_FOV = 75;
 const CAMERA_ASPECT_RATIO = window.innerWidth / window.innerHeight;
 const CAMERA_NEAR_PLANE = 0.1;
 const CAMERA_FAR_PLANE = 1000;
+const VECTOR_THREE_ZERO = new THREE.Vector3(0, 0, 0);
 let camera;
 let scene;
 let renderer;
+let spotLight;
+let hemisphereLight;
+let clock;
+let cameraPivot;
+let loader;
 let geometry1;
 let geometry2;
 let material1;
 let material2;
 let mesh1;
 let mesh2;
+let matrix;
+let isMouseDown;
+let mousePos;
+let raycaster;
+let targetPos;
 start();
 function start() {
     init();
@@ -22,23 +33,56 @@ function start() {
 }
 function init() {
     renderer = new THREE.WebGLRenderer();
+    clock = new THREE.Clock();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(CAMERA_FOV, CAMERA_ASPECT_RATIO, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
+    cameraPivot = new THREE.Object3D();
+    spotLight = new THREE.SpotLight(0xffffbb, 2);
+    hemisphereLight = new THREE.HemisphereLight(0x443333, 0x111122);
+    loader = new THREE.TextureLoader();
     geometry1 = new THREE.BoxGeometry(1, 1, 1);
-    geometry2 = new THREE.DodecahedronBufferGeometry(0.5);
-    material1 = new THREE.MeshNormalMaterial();
-    material2 = new THREE.MeshNormalMaterial();
+    geometry2 = new THREE.SphereGeometry(0.5, 16, 16);
+    material1 = new THREE.MeshStandardMaterial({
+        map: loader.load('/assets/texture/crate/crate_diffuse.jpg'),
+        normalMap: loader.load('/assets/texture/crate/crate_normal.jpg')
+    });
+    material2 = new THREE.MeshStandardMaterial({
+        map: loader.load('/assets/texture/rock/rock_diffuse.jpg'),
+        normalMap: loader.load('/assets/texture/rock/rock_normal.jpg')
+    });
     mesh1 = new THREE.Mesh(geometry1, material1);
     mesh2 = new THREE.Mesh(geometry2, material2);
+    matrix = new THREE.Matrix4();
+    isMouseDown = false;
+    mousePos = new THREE.Vector2();
+    raycaster = new THREE.Raycaster();
+    targetPos = new THREE.Vector3();
 }
 function setupScene() {
-    camera.position.z = 5;
+    scene.add(camera);
+    scene.add(cameraPivot);
+    scene.add(spotLight);
+    scene.add(hemisphereLight);
+    scene.background = new THREE.Color(0x333333);
+    camera.parent = cameraPivot;
+    camera.position.z = 3;
+    camera.lookAt(VECTOR_THREE_ZERO);
+    spotLight.position.set(0.5, 0, 1);
+    spotLight.position.multiplyScalar(700);
+    spotLight.castShadow = true;
+    spotLight.shadow.mapSize.width = 512;
+    spotLight.shadow.mapSize.height = 512;
+    spotLight.shadow.camera.near = 200;
+    spotLight.shadow.camera.far = 1500;
+    spotLight.shadow.camera.fov = 40;
+    spotLight.shadow.bias = -0.005;
 }
 function setupActors() {
     scene.add(mesh1);
     scene.add(mesh2);
     mesh1.position.x = -1;
     mesh2.position.x = 1;
+    targetPos = mesh1.position;
 }
 function setupRenderer() {
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -53,10 +97,7 @@ function setupEvents() {
     document.addEventListener('contextmenu', onContextMenu, false);
 }
 function update(time) {
-    mesh1.rotation.x = time / 2000;
-    mesh1.rotation.y = time / 1000;
-    mesh2.rotation.x = time / 2000;
-    mesh2.rotation.y = time / 1000;
+    cameraPivot.position.lerp(targetPos, 0.1);
     renderer.render(scene, camera);
 }
 function onWindowResize() {
@@ -66,36 +107,41 @@ function onWindowResize() {
 }
 function onDocumentMouseDown(event) {
     event.preventDefault();
+    isMouseDown = true;
     switch (event.which) {
         case 1:
-            console.log("Event 1");
             break;
         case 2:
-            console.log("Event 2");
             break;
         case 3:
-            console.log("Event 3");
             break;
     }
 }
 function onDocumentMouseUp(event) {
     event.preventDefault();
+    isMouseDown = false;
     switch (event.which) {
         case 1:
-            console.log("Event Up 1");
+            raycaster.setFromCamera(mousePos, camera);
+            const intersects = raycaster.intersectObjects(scene.children);
+            if (intersects.length > 0) {
+                targetPos = intersects[0].object.position;
+            }
             break;
         case 2:
-            console.log("Event Up 2");
             break;
         case 3:
-            console.log("Event Up 3");
             break;
     }
 }
 function onDocumentMouseMove(event) {
     event.preventDefault();
-    console.log("Mouse X: " + event.x);
-    console.log("Mouse Y: " + event.y);
+    mousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mousePos.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    if (event.which == 1 && isMouseDown) {
+        cameraPivot.rotateY(event.movementX * Math.PI / 180);
+        cameraPivot.rotateX(event.movementY * Math.PI / 180);
+    }
 }
 function onContextMenu(event) {
     event.preventDefault();
