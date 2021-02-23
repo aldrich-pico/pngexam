@@ -18,11 +18,12 @@ let material1;
 let material2;
 let mesh1;
 let mesh2;
-let matrix;
+let gridHelper;
 let isMouseDown;
 let mousePos;
 let raycaster;
-let targetPos;
+let pivotTargetPos;
+let cameraTargetPos;
 start();
 function start() {
     init();
@@ -50,24 +51,27 @@ function init() {
         map: loader.load('/assets/texture/rock/rock_diffuse.jpg'),
         normalMap: loader.load('/assets/texture/rock/rock_normal.jpg')
     });
+    gridHelper = new THREE.GridHelper(10, 10);
     mesh1 = new THREE.Mesh(geometry1, material1);
     mesh2 = new THREE.Mesh(geometry2, material2);
-    matrix = new THREE.Matrix4();
     isMouseDown = false;
     mousePos = new THREE.Vector2();
     raycaster = new THREE.Raycaster();
-    targetPos = new THREE.Vector3();
+    pivotTargetPos = new THREE.Vector3();
+    cameraTargetPos = new THREE.Vector3();
 }
 function setupScene() {
     scene.add(camera);
     scene.add(cameraPivot);
     scene.add(spotLight);
     scene.add(hemisphereLight);
+    scene.add(gridHelper);
     scene.background = new THREE.Color(0x333333);
     camera.parent = cameraPivot;
     camera.position.z = 3;
     camera.lookAt(VECTOR_THREE_ZERO);
-    spotLight.position.set(0.5, 0, 1);
+    raycaster.layers.set(1);
+    spotLight.position.set(0.2, 1.5, 1);
     spotLight.position.multiplyScalar(700);
     spotLight.castShadow = true;
     spotLight.shadow.mapSize.width = 512;
@@ -82,7 +86,9 @@ function setupActors() {
     scene.add(mesh2);
     mesh1.position.x = -1;
     mesh2.position.x = 1;
-    targetPos = mesh1.position;
+    mesh1.layers.enable(1);
+    mesh2.layers.enable(1);
+    pivotTargetPos = mesh1.position;
 }
 function setupRenderer() {
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -97,7 +103,7 @@ function setupEvents() {
     document.addEventListener('contextmenu', onContextMenu, false);
 }
 function update(time) {
-    cameraPivot.position.lerp(targetPos, 0.1);
+    cameraPivot.position.lerp(pivotTargetPos, 0.1);
     renderer.render(scene, camera);
 }
 function onWindowResize() {
@@ -125,7 +131,7 @@ function onDocumentMouseUp(event) {
             raycaster.setFromCamera(mousePos, camera);
             const intersects = raycaster.intersectObjects(scene.children);
             if (intersects.length > 0) {
-                targetPos = intersects[0].object.position;
+                pivotTargetPos = intersects[0].object.position;
             }
             break;
         case 2:
@@ -138,9 +144,18 @@ function onDocumentMouseMove(event) {
     event.preventDefault();
     mousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
     mousePos.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    if (event.which == 1 && isMouseDown) {
-        cameraPivot.rotateY(event.movementX * Math.PI / 180);
-        cameraPivot.rotateX(event.movementY * Math.PI / 180);
+    if (isMouseDown) {
+        switch (event.which) {
+            case 1:
+                cameraPivot.rotateY(event.movementX * Math.PI / 360);
+                cameraPivot.rotateX(event.movementY * Math.PI / 360);
+                break;
+            case 2:
+                break;
+            case 3:
+                camera.position.z += event.movementY * 0.01;
+                break;
+        }
     }
 }
 function onContextMenu(event) {
