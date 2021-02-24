@@ -30,7 +30,7 @@ let raycaster: THREE.Raycaster;
 
 let pivotTargetPos: THREE.Vector3;
 let cameraTargetPos: THREE.Vector3;
-
+var system: import("./lib/partykals/particles_system");
 start();
 
 function start() {
@@ -47,6 +47,7 @@ function init() {
 
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(CAMERA_FOV, CAMERA_ASPECT_RATIO, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
+
 	cameraPivot = new THREE.Object3D();
 	spotLight = new THREE.SpotLight(0xffffbb, 2);
 	hemisphereLight = new THREE.HemisphereLight(0x443333, 0x111122);
@@ -75,6 +76,28 @@ function init() {
 
 	pivotTargetPos = new THREE.Vector3();
 	cameraTargetPos = new THREE.Vector3();
+
+	system = new Partykals.ParticlesSystem({
+		container: scene,
+		particles: {
+			globalSize: 0.2,
+			ttl: 2,
+			velocity: new Partykals.Randomizers.SphereRandomizer(3, 5, 0, 0, 0),
+			velocityBonus: new THREE.Vector3(0, 4, 0),
+			gravity: -3,
+			startColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0xaa1234), new THREE.Color(0x2345ff)),
+			endColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0x115532), new THREE.Color(0x75af12)),
+		},
+		system: {
+			particlesCount: 1000,
+			emitters: new Partykals.Emitter({
+				onInterval: new Partykals.Randomizers.MinMaxRandomizer(0, 5),
+				interval: new Partykals.Randomizers.MinMaxRandomizer(0, 0.25),
+			}),
+			speed: 1,
+		}
+	});
+	system.particleSystem.position.x = 3;
 }
 
 function setupScene() {
@@ -127,12 +150,15 @@ function setupEvents() {
 	document.addEventListener('mouseup', onDocumentMouseUp, false);
 	document.addEventListener('mousemove', onDocumentMouseMove, false);
 	document.addEventListener('contextmenu', onContextMenu, false);
+	document.addEventListener('keyup', onDocumentKeyUp, false);
 }
 
 function update(time: number) {
 	cameraPivot.position.lerp(pivotTargetPos, 0.1);
-
+	system.update(clock.getDelta());
 	renderer.render(scene, camera);
+
+	var dt = clock.getDelta();
 }
 
 function onWindowResize() {
@@ -196,6 +222,16 @@ function onDocumentMouseMove(event: MouseEvent) {
 				camera.position.z += event.movementY * 0.01;
 				break;
 		}
+    }
+}
+
+function onDocumentKeyUp(event: KeyboardEvent) {
+	event.preventDefault();
+
+	switch (event.code) {
+		case "Space":
+			gridHelper.visible = !gridHelper.visible;
+			break;
     }
 }
 

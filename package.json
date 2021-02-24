@@ -15,6 +15,7 @@
     "typescript": "^4.1.5"
   },
   "dependencies": {
+    "partykals": "^1.0.2",
     "three": "^0.125.2"
   }
 }
