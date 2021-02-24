@@ -24,7 +24,8 @@ let mousePos;
 let raycaster;
 let pivotTargetPos;
 let cameraTargetPos;
-var system;
+var particleSystem1;
+var particleSystem2;
 start();
 function start() {
     init();
@@ -55,32 +56,69 @@ function init() {
     gridHelper = new THREE.GridHelper(10, 10);
     mesh1 = new THREE.Mesh(geometry1, material1);
     mesh2 = new THREE.Mesh(geometry2, material2);
+    mesh1.name = "crate";
+    mesh2.name = "rock";
     isMouseDown = false;
-    mousePos = new THREE.Vector2();
+    mousePos = new THREE.Vector2(-1, -1);
     raycaster = new THREE.Raycaster();
     pivotTargetPos = new THREE.Vector3();
     cameraTargetPos = new THREE.Vector3();
-    system = new Partykals.ParticlesSystem({
+    particleSystem1 = new Partykals.ParticlesSystem({
         container: scene,
         particles: {
-            globalSize: 0.2,
-            ttl: 2,
-            velocity: new Partykals.Randomizers.SphereRandomizer(3, 5, 0, 0, 0),
-            velocityBonus: new THREE.Vector3(0, 4, 0),
-            gravity: -3,
-            startColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0xaa1234), new THREE.Color(0x2345ff)),
-            endColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0x115532), new THREE.Color(0x75af12)),
+            startAlpha: 1,
+            endAlpha: 0,
+            startSize: 0.2,
+            endSize: 0.9,
+            ttl: 0.4,
+            offset: new Partykals.Randomizers.SphereRandomizer(0.9, 0.3, 0, 0, 0),
+            startColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0.5, 0.2, 0), new THREE.Color(1, 0.5, 0)),
+            endColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0.75, 0.2, 0.1), new THREE.Color(1, 0.25, 0.3)),
+            blending: "additive",
         },
         system: {
-            particlesCount: 1000,
+            particlesCount: 2500,
+            scale: 400,
+            depthWrite: false,
             emitters: new Partykals.Emitter({
-                onInterval: new Partykals.Randomizers.MinMaxRandomizer(0, 5),
-                interval: new Partykals.Randomizers.MinMaxRandomizer(0, 0.25),
+                onInterval: new Partykals.Randomizers.MinMaxRandomizer(35, 85),
+                interval: new Partykals.Randomizers.MinMaxRandomizer(0, 0.015),
             }),
             speed: 1,
+            onUpdate: (system) => {
+                system.particleSystem.rotation.y += system.dt;
+            },
+            ttl: 0
         }
     });
-    system.particleSystem.position.x = 3;
+    particleSystem2 = new Partykals.ParticlesSystem({
+        container: scene,
+        particles: {
+            startAlpha: 1,
+            endAlpha: 0,
+            startSize: new Partykals.Randomizers.MinMaxRandomizer(0.1, 0.5),
+            endSize: new Partykals.Randomizers.MinMaxRandomizer(0.5, 2),
+            ttl: 1,
+            velocity: new Partykals.Randomizers.SphereRandomizer(0.5, 1, 0, 0, 0),
+            startColor: new Partykals.Randomizers.ColorsRandomizer(new THREE.Color(0.5, 0.2, 0), new THREE.Color(1, 0.5, 0)),
+            endColor: new THREE.Color(0, 0, 0.5),
+            blending: "additive",
+            worldPosition: true,
+            rotation: new Partykals.Randomizers.MinMaxRandomizer(0, 6.28319),
+            rotationSpeed: new Partykals.Randomizers.MinMaxRandomizer(-10, 10),
+        },
+        system: {
+            particlesCount: 500,
+            scale: 400,
+            depthWrite: false,
+            emitters: new Partykals.Emitter({
+                onInterval: new Partykals.Randomizers.MinMaxRandomizer(250, 500),
+                interval: 1,
+            }),
+            speed: 1,
+            ttl: 0
+        }
+    });
 }
 function setupScene() {
     scene.add(camera);
@@ -110,6 +148,8 @@ function setupActors() {
     mesh2.position.x = 1;
     mesh1.layers.enable(1);
     mesh2.layers.enable(1);
+    particleSystem1.particleSystem.position.x = mesh1.position.x;
+    particleSystem2.particleSystem.position.x = mesh2.position.x;
     pivotTargetPos = mesh1.position;
 }
 function setupRenderer() {
@@ -126,10 +166,19 @@ function setupEvents() {
     document.addEventListener('keyup', onDocumentKeyUp, false);
 }
 function update(time) {
-    cameraPivot.position.lerp(pivotTargetPos, 0.1);
-    system.update(clock.getDelta());
-    renderer.render(scene, camera);
     var dt = clock.getDelta();
+    raycaster.setFromCamera(mousePos, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+    if (intersects.length > 0) {
+        if (intersects[0].object.name == "crate")
+            particleSystem1.ttl = 0.3;
+        else if (intersects[0].object.name == "rock")
+            particleSystem2.ttl = 0.3;
+    }
+    particleSystem1.update(dt);
+    particleSystem2.update(dt);
+    cameraPivot.position.lerp(pivotTargetPos, 0.1);
+    renderer.render(scene, camera);
 }
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
