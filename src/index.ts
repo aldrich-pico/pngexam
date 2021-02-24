@@ -152,7 +152,9 @@ function setupScene() {
 	camera.parent = cameraPivot;
 	camera.position.z = 3;
 	camera.lookAt(VECTOR_THREE_ZERO);
-
+	cameraPivot.rotation.x = -0.7;
+	cameraPivot.rotation.y = 0.2;
+	
 	raycaster.layers.set(1);
 
 	spotLight.position.set(0.2, 1.5, 1);
